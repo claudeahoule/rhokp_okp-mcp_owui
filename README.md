@@ -11,11 +11,11 @@ podman login registry.redhat.io
 podman pull registry.redhat.io/offline-knowledge-portal/rhokp-rhel9:latest
 ```
 
-_The image is large, so I pulled it ahead of time._
+_The image is large, so it might take a while to download._
 
 ### 2. Generate your access key
 
-*   Open the **Offline Knowledge Portal Access Key Generator** at [https://access.redhat.com/offline/access](https://access.redhat.com/offline/access) and click **Generate key**. _(screenshots)_
+*   Open the **Offline Knowledge Portal Access Key Generator** at [https://access.redhat.com/offline/access](https://access.redhat.com/offline/access) and click **Generate key**.
     
 *   A **Red Hat Satellite subscription is needed** to generate the key, but you don't need to install Satellite.
     
@@ -56,12 +56,10 @@ podman run --rm -d \
 
 ### 4. Verify
 
-Browse to `http://<host>:8003` and try a search. _(screenshot)_
+Browse to `http://<host>:8003` and try a search.
 **Resources:** Minimum 1 core, 1 GB RAM and 50 GB disk. Recommended 2 cores, 2 GB RAM and 75 GB disk.
 
 * * *
-
-## Presenter notes for Step 1 (not for the slide)
 
 *   The `--env-file` must contain `ACCESS_KEY=<key>`. A file holding only the raw key won't set the variable, and the portal starts with limited functionality (no search or KB content).
     
@@ -69,11 +67,7 @@ Browse to `http://<host>:8003` and try a search. _(screenshot)_
     
 *   Without a volume, `--rm` discards the index when the container stops, so the next start re-downloads and re-indexes (several minutes). Step 2 adds a named volume to fix this.
     
-*   `--add-host=host.docker.internal:host-gateway` isn't in the Red Hat docs, and the later steps don't use it (Step 3 uses `host.containers.internal`, which podman provides automatically). Drop it from the slide unless you need it for something else.
-    
 *   The Red Hat docs publish `8080:8080`. The `8003` mapping is a local choice.
-    
-*   Blur or crop the access key field in screenshots if the key is ever visible.
     
 *   This standalone container is the "simple" version. Step 2 replaces it with a pod that also runs okp-mcp. Stop this one first (`podman stop rhokp`), because the container name `rhokp` and host port `8003` would conflict.
     
@@ -90,7 +84,7 @@ cd okp-mcp/
 podman build -t localhost/okp-mcp:latest -f Containerfile .
 ```
 
-_The build takes a while, so I built it ahead of time._
+_The build takes a while._
 
 ### 2. Create a pod
 
@@ -164,17 +158,15 @@ Browser check: `http://<host>:8003`.
 
 * * *
 
-## Presenter notes for Step 2 (not for the slide)
-
 *   Solr isn't published on the host. That's good design: the search index is only reachable from inside the pod. It also means `curl localhost:8983` from the host won't work. Test through the MCP endpoint on 8000 instead.
     
-*   `MCP_TRANSPORT` and `MCP_SOLR_URL` are close to the okp-mcp defaults (`streamable-http` and `http://localhost:8983`). Setting them explicitly makes the demo clearer. Using `127.0.0.1` also avoids the IPv6 `localhost` (`::1`) problem the README mentions.
+*   `MCP_TRANSPORT` and `MCP_SOLR_URL` are close to the okp-mcp defaults (`streamable-http` and `http://localhost:8983`). Setting them explicitly makes a demo clearer. Using `127.0.0.1` also avoids the IPv6 `localhost` (`::1`) problem the README mentions.
     
 *   The `okp-solr-data` volume survives `podman pod rm -f okp`. Without it, removing the pod deletes the index and the next start has to re-index.
     
 *   Port 8443 (HTTPS) isn't published in this layout. Add `-p 8443:8443` to `podman pod create` if you want it.
     
-*   Port 8000 is published on all host interfaces and okp-mcp has no authentication. That's fine for a demo. For production, put a gateway or reverse proxy in front (the bank/Copilot Studio discussion).
+*   Port 8000 is published on all host interfaces and okp-mcp has no authentication. That's fine for a demo. For production, put a gateway or reverse proxy in front.
     
 *   The okp-mcp README lists a prebuilt image, `quay.io/redhat-user-workloads/rhel-lightspeed-tenant/rhel-knowledge-bridge`, which skips the build. It also describes systemd quadlets for restart and boot persistence.
     
@@ -250,23 +242,11 @@ Once saved, the okp tools are available to use in chats.
 
 * * *
 
-## Presenter notes for Step 3 (not for the slide)
-
-*   **Correction to my earlier guess:** `host.containers.internal` is what makes the cross-pod connection work. It's built in to podman, so no `--add-host` flag is needed. The `host.docker.internal` flag from Step 1 isn't what's doing this job.
-    
-*   The full path is: Open WebUI, to MCPO, to the host's port 8000, to the okp pod, to okp-mcp. If this fails, check that the `okp` pod is running and that port 8000 is published.
-    
-*   The Open WebUI URL is `localhost:8001`, while MCPO's config uses `host.containers.internal:8000`. These are different hops. Open WebUI reaches MCPO on its own local network (probably the same pod, since `localhost` works). MCPO then goes out through the host to the `okp` pod.
-    
-*   The Auth field is set to Bearer with no key. That works if MCPO isn't started with an API key. If MCPO uses one (`--api-key`), enter it there. There's also an option for no auth, which may be cleaner for the demo.
-    
-*   The Access Control button controls which Open WebUI users or groups can use this tool server. Check it for your demo account.
-    
 *   Naming: MCPO's route `/okp` and the connection name `mcpo-okp` are independent. The name is just a label in Open WebUI, and the URL is what matters.
     
-*   MCPO is only needed for Open WebUI, which wants OpenAPI tool servers. Copilot Studio can talk Streamable MCP to okp-mcp directly, with no MCPO layer in between. That's the bridge to the bank discussion.
+*   MCPO is only needed for Open WebUI, which wants OpenAPI tool servers. Copilot Studio can talk Streamable MCP to okp-mcp directly, with no MCPO layer in between.
     
-*   Restarting MCPO affects every MCP server behind it. Do it before the demo, not during.
+*   Restarting MCPO affects every MCP server behind it.
     
 *   Neither the MCPO entry nor okp-mcp has authentication. That's fine for a demo, but not for production.
     
